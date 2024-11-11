@@ -1,130 +1,149 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AI Assistant Dashboard</title>
+    <title>Anshubot Dashboard</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .control-panel {
+        /* ... existing styles ... */
+        .photo-upload-section {
             margin: 20px 0;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
         }
-        .upload-status {
-            margin-top: 10px;
+        .relationship-mapping {
+            margin: 10px 0;
             padding: 10px;
-            display: none;
+            border: 1px solid #eee;
         }
-        .success { background-color: #dff0d8; }
-        .error { background-color: #f2dede; }
-        .cost-estimate {
-            margin-top: 10px;
-            font-size: 0.9em;
-            color: #666;
+        .preview-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .preview-item {
+            position: relative;
+            padding: 5px;
+        }
+        .preview-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+        .face-tag {
+            position: absolute;
+            background: rgba(255,255,255,0.8);
+            padding: 2px 5px;
+            border-radius: 3px;
         }
     </style>
 </head>
 <body>
-    <h1>AI Assistant Dashboard</h1>
+    <h1>Anshubot Dashboard</h1>
     
     <div class="control-panel">
-        <h2>Dataset Management</h2>
-        <div>
-            <h3>Training Messages</h3>
-            <input type="file" id="messageUpload" accept=".txt,.json" multiple>
-            <p class="help">Supported formats: WhatsApp export (.txt), iMessage/SMS export (.json)</p>
+        <h2>Photo Management</h2>
+        
+        <!-- Relationship Definitions -->
+        <div class="relationship-mapping">
+            <h3>Define Relationships</h3>
+            <div>
+                <label>Anshul:</label>
+                <input type="text" id="anshul-relation" value="boyfriend" placeholder="e.g., boyfriend">
+            </div>
+            <div>
+                <label>Aarya:</label>
+                <input type="text" id="aarya-relation" value="me" placeholder="e.g., me">
+            </div>
         </div>
-        <div>
-            <h3>Training Photos</h3>
+
+        <!-- Photo Upload -->
+        <div class="photo-upload-section">
+            <h3>Upload Photos</h3>
             <input type="file" id="photoUpload" accept="image/*" multiple>
-            <p class="help">Supported formats: JPG, PNG (max 2MB per image)</p>
+            <p class="help">Select multiple photos of you and Anshul</p>
         </div>
-        <div class="cost-estimate" id="costEstimate"></div>
-        <button onclick="uploadDataset()">Upload Dataset</button>
+
+        <!-- Preview Section -->
+        <div id="previewContainer" class="preview-container"></div>
+
+        <button onclick="processPhotos()">Process Photos</button>
         <div id="uploadStatus" class="upload-status"></div>
     </div>
 
     <script>
-        function estimateCost(files) {
-            // GPT-4o mini pricing
-            const INPUT_PRICE_PER_TOKEN = 0.00000015; // $0.150 per 1M tokens
-            const OUTPUT_PRICE_PER_TOKEN = 0.0000006; // $0.600 per 1M tokens
-            
-            let totalSize = 0;
-            for (let file of files) {
-                totalSize += file.size;
-            }
-            
-            // Rough estimation: 1 byte ≈ 0.4 tokens
-            const estimatedTokens = totalSize * 0.4;
-            const estimatedCost = (estimatedTokens * INPUT_PRICE_PER_TOKEN) + 
-                                (estimatedTokens * 0.5 * OUTPUT_PRICE_PER_TOKEN);
-            
-            return estimatedCost.toFixed(4);
-        }
+        let processedPhotos = [];
 
-        async function uploadDataset() {
-            const messageFiles = document.getElementById('messageUpload').files;
-            const photoFiles = document.getElementById('photoUpload').files;
+        async function processPhotos() {
+            const files = document.getElementById('photoUpload').files;
+            const anshulRelation = document.getElementById('anshul-relation').value;
+            const aaryaRelation = document.getElementById('aarya-relation').value;
             
             try {
-                const formData = new FormData();
+                updateStatus('Processing photos...', 'info');
                 
-                // Add message files
-                for(let file of messageFiles) {
-                    formData.append('messages[]', file);
-                }
-                
-                // Add photo files
-                for(let file of photoFiles) {
-                    formData.append('photos[]', file);
-                }
-
-                // Estimate cost
-                const cost = estimateCost([...messageFiles, ...photoFiles]);
-                const proceed = confirm(`Estimated cost: $${cost}. Continue with upload?`);
-                
-                if (!proceed) {
-                    updateStatus('Upload cancelled', 'info');
-                    return;
+                for(let file of files) {
+                    const photoData = await processPhoto(file);
+                    processedPhotos.push({
+                        file: file.name,
+                        faces: photoData.faces,
+                        relationships: {
+                            'Anshul': anshulRelation,
+                            'Aarya': aaryaRelation
+                        }
+                    });
                 }
 
-                // Trigger GitHub Action
-                const response = await fetch('https://api.github.com/repos/Anshul-Boinepally/anshubot/dispatches', {
+                // Send to GitHub Actions
+                const response = await fetch('https://api.github.com/repos/YOUR_USERNAME/YOUR_REPO/dispatches', {
                     method: 'POST',
                     headers: {
                         'Authorization': `token ${process.env.GITHUB_TOKEN}`,
                         'Accept': 'application/vnd.github.v3+json'
                     },
                     body: JSON.stringify({
-                        event_type: 'process_dataset',
+                        event_type: 'process_photos',
                         client_payload: {
-                            files: Array.from(messageFiles).map(f => ({
-                                name: f.name,
-                                size: f.size,
-                                type: f.type
-                            }))
+                            photos: processedPhotos
                         }
                     })
                 });
                 
-                updateStatus('Upload successful! Processing will begin shortly.', 'success');
+                updateStatus('Photos processed and uploaded successfully!', 'success');
             } catch (error) {
-                updateStatus('Upload failed: ' + error.message, 'error');
+                updateStatus('Processing failed: ' + error.message, 'error');
             }
         }
 
-        // Update cost estimate when files are selected
-        document.getElementById('messageUpload').addEventListener('change', function() {
-            const cost = estimateCost(this.files);
-            document.getElementById('costEstimate').textContent = 
-                `Estimated processing cost: $${cost}`;
-        });
+        async function processPhoto(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        // Preview the image
+                        showPreview(img.src, file.name);
+                        
+                        // In real implementation, we'd do face detection here
+                        resolve({
+                            width: img.width,
+                            height: img.height,
+                            faces: [] // Will be populated by Azure Face API
+                        });
+                    };
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function showPreview(src, filename) {
+            const container = document.getElementById('previewContainer');
+            const div = document.createElement('div');
+            div.className = 'preview-item';
+            div.innerHTML = `
+                <img src="${src}" alt="${filename}">
+                <div class="face-tag">Processing...</div>
+            `;
+            container.appendChild(div);
+        }
 
         function updateStatus(message, type) {
             const statusDiv = document.getElementById('uploadStatus');
