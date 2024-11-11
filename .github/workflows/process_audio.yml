@@ -1,0 +1,26 @@
+name: Process Audio and Dataset
+
+on:
+  repository_dispatch:
+    types: [process_audio, process_dataset]
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+          
+      - name: Install dependencies
+        run: |
+          pip install openai transformers torch firebase-admin
+
+      - name: Process Request
+        env:
+          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python .github/scripts/process_audio.py
