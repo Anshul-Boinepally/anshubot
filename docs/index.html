@@ -1,197 +1,173 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>AI Assistant Dashboard</title>
-    <style>
-        /* ... existing styles ... */
-        .section {
-            margin: 20px 0;
-            padding: 15px;
-            border: 1px solid #eee;
-            border-radius: 5px;
-        }
-        .reference-photo {
-            margin: 10px 0;
-        }
-        .mapping-section {
-            margin: 15px 0;
-        }
-        .mapping-input {
-            display: flex;
-            gap: 10px;
-            margin: 5px 0;
-        }
-    </style>
-</head>
-<body>
-    <h1>AI Assistant Dashboard</h1>
-    
-    <div class="control-panel">
-        <!-- Reference Photos Section -->
-        <div class="section">
-            <h2>1. Identity Setup</h2>
-            <div class="reference-photo">
-                <h3>Anshul's Reference Photo</h3>
-                <input type="file" id="anshulRef" accept="image/*">
-                <p class="help">Upload a clear photo of Anshul's face</p>
-            </div>
-            <div class="reference-photo">
-                <h3>Aarya's Reference Photo</h3>
-                <input type="file" id="aaryaRef" accept="image/*">
-                <p class="help">Upload a clear photo of Aarya's face</p>
-            </div>
+<!-- Add this right after the control-panel div -->
+<div class="status-panel">
+    <h2>Processing Status</h2>
+    <div class="status-items">
+        <div class="status-item">
+            <span class="status-label">Reference Photos:</span>
+            <span id="refStatus" class="status-value">Not started</span>
         </div>
-
-        <!-- Message Mapping Section -->
-        <div class="section">
-            <h2>2. Message Identity Mapping</h2>
-            <p>Map phone numbers/usernames to people:</p>
-            <div class="mapping-section">
-                <div class="mapping-input">
-                    <input type="text" id="anshulPhone" placeholder="Anshul's phone/username">
-                    <span>→ Anshul (boyfriend)</span>
-                </div>
-                <div class="mapping-input">
-                    <input type="text" id="aaryaPhone" placeholder="Aarya's phone/username">
-                    <span>→ Aarya (me)</span>
-                </div>
-            </div>
+        <div class="status-item">
+            <span class="status-label">Photo Collection:</span>
+            <span id="photoStatus" class="status-value">Not started</span>
         </div>
-
-        <!-- Photo Collection Section -->
-        <div class="section">
-            <h2>3. Photo Collection</h2>
-            <input type="file" id="photoCollection" accept="image/*" multiple>
-            <p class="help">Upload photos you want to be searchable</p>
-            <div id="photoPreview" class="preview-container"></div>
+        <div class="status-item">
+            <span class="status-label">Messages:</span>
+            <span id="messageStatus" class="status-value">Not started</span>
         </div>
-
-        <!-- Message Collection Section -->
-        <div class="section">
-            <h2>4. Message History</h2>
-            <input type="file" id="messageUpload" accept=".txt,.json,.csv" multiple>
-            <p class="help">Upload message exports (WhatsApp, iMessage, SMS)</p>
-            <div id="messagePreview"></div>
-        </div>
-
-        <button onclick="processData()">Process Everything</button>
-        <div id="uploadStatus" class="upload-status"></div>
     </div>
+    <div class="progress-bar" id="totalProgress">
+        <div class="progress-fill"></div>
+        <span class="progress-text">0%</span>
+    </div>
+</div>
 
-    <script>
-        let processedFiles = {
-            references: {},
-            photos: [],
-            messages: [],
-            identityMap: {}
+<style>
+    .status-panel {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #eee;
+        border-radius: 5px;
+    }
+    .status-items {
+        margin: 10px 0;
+    }
+    .status-item {
+        margin: 5px 0;
+        display: flex;
+        justify-content: space-between;
+    }
+    .status-value {
+        font-weight: bold;
+    }
+    .status-value.pending { color: #f0ad4e; }
+    .status-value.processing { color: #5bc0de; }
+    .status-value.complete { color: #5cb85c; }
+    .status-value.error { color: #d9534f; }
+    .progress-bar {
+        width: 100%;
+        height: 20px;
+        background-color: #f5f5f5;
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+        margin: 10px 0;
+    }
+    .progress-fill {
+        height: 100%;
+        background-color: #5cb85c;
+        width: 0;
+        transition: width 0.3s ease;
+    }
+    .progress-text {
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        color: #333;
+        line-height: 20px;
+    }
+</style>
+
+<script>
+    // Add this to your existing JavaScript
+    async function checkProcessingStatus(jobId) {
+        const statusEndpoint = `https://api.github.com/repos/YOUR_USERNAME/YOUR_REPO/actions/runs/${jobId}`;
+        
+        const updateStatus = (elementId, status, message) => {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status-value ${status}`;
         };
 
-        async function processData() {
-            try {
-                updateStatus('Processing data...', 'info');
-                
-                // Get identity mappings
-                processedFiles.identityMap = {
-                    [document.getElementById('anshulPhone').value]: {
-                        name: 'Anshul',
-                        relationship: 'boyfriend'
-                    },
-                    [document.getElementById('aaryaPhone').value]: {
-                        name: 'Aarya',
-                        relationship: 'me'
-                    }
-                };
+        const updateProgress = (percent) => {
+            const progressBar = document.querySelector('.progress-fill');
+            const progressText = document.querySelector('.progress-text');
+            progressBar.style.width = `${percent}%`;
+            progressText.textContent = `${percent}%`;
+        };
 
-                // Process reference photos
-                const anshulRef = document.getElementById('anshulRef').files[0];
-                const aaryaRef = document.getElementById('aaryaRef').files[0];
-                if (anshulRef) {
-                    processedFiles.references.anshul = await processFile(anshulRef);
-                }
-                if (aaryaRef) {
-                    processedFiles.references.aarya = await processFile(aaryaRef);
-                }
-
-                // Process photo collection
-                const photos = document.getElementById('photoCollection').files;
-                for (let photo of photos) {
-                    processedFiles.photos.push(await processFile(photo));
-                }
-
-                // Process messages
-                const messages = document.getElementById('messageUpload').files;
-                for (let msgFile of messages) {
-                    processedFiles.messages.push(await processFile(msgFile));
-                }
-
-                // Send to GitHub Actions
-                const response = await fetch('https://api.github.com/repos/Anshul-Boinepally/anshubot/dispatches', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `token ${process.env.GITHUB_TOKEN}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    },
-                    body: JSON.stringify({
-                        event_type: 'process_dataset',
-                        client_payload: {
-                            data: processedFiles
-                        }
-                    })
-                });
-
-                updateStatus('Data processed successfully!', 'success');
-            } catch (error) {
-                updateStatus('Processing failed: ' + error.message, 'error');
-            }
-        }
-
-        async function processFile(file) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    resolve({
-                        name: file.name,
-                        content: e.target.result,
-                        type: file.type,
-                        lastModified: file.lastModified,
-                        metadata: {
-                            timestamp: new Date(file.lastModified).toISOString()
-                        }
-                    });
-                };
-                if (file.type.startsWith('image/')) {
-                    reader.readAsDataURL(file);
-                } else {
-                    reader.readAsText(file);
+        try {
+            const response = await fetch(statusEndpoint, {
+                headers: {
+                    'Authorization': `token ${process.env.GITHUB_TOKEN}`,
+                    'Accept': 'application/vnd.github.v3+json'
                 }
             });
-        }
-
-        // Add preview handlers
-        document.getElementById('photoCollection').addEventListener('change', function(e) {
-            const container = document.getElementById('photoPreview');
-            container.innerHTML = '';
-            for (let file of this.files) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const div = document.createElement('div');
-                    div.className = 'preview-item';
-                    div.innerHTML = `
-                        <img src="${e.target.result}" alt="${file.name}">
-                        <div class="metadata">Created: ${new Date(file.lastModified).toLocaleString()}</div>
-                    `;
-                    container.appendChild(div);
-                };
-                reader.readAsDataURL(file);
+            
+            const data = await response.json();
+            
+            switch(data.status) {
+                case 'queued':
+                    updateStatus('refStatus', 'pending', 'Queued...');
+                    updateProgress(10);
+                    break;
+                case 'in_progress':
+                    updateStatus('refStatus', 'processing', 'Processing...');
+                    updateStatus('photoStatus', 'processing', 'Processing...');
+                    updateProgress(50);
+                    break;
+                case 'completed':
+                    if (data.conclusion === 'success') {
+                        updateStatus('refStatus', 'complete', 'Complete');
+                        updateStatus('photoStatus', 'complete', 'Complete');
+                        updateStatus('messageStatus', 'complete', 'Complete');
+                        updateProgress(100);
+                        return true;
+                    } else {
+                        updateStatus('refStatus', 'error', 'Failed');
+                        updateStatus('photoStatus', 'error', 'Failed');
+                        updateStatus('messageStatus', 'error', 'Failed');
+                        return true;
+                    }
+                    break;
             }
-        });
-
-        function updateStatus(message, type) {
-            const statusDiv = document.getElementById('uploadStatus');
-            statusDiv.textContent = message;
-            statusDiv.className = `upload-status ${type}`;
-            statusDiv.style.display = 'block';
+            
+            // Continue checking if not complete
+            setTimeout(() => checkProcessingStatus(jobId), 5000);
+            return false;
+            
+        } catch (error) {
+            console.error('Error checking status:', error);
+            updateStatus('refStatus', 'error', 'Error checking status');
+            return true;
         }
-    </script>
-</body>
-</html>
+    }
+
+    // Modify your processData function
+    async function processData() {
+        try {
+            updateStatus('refStatus', 'pending', 'Starting...');
+            updateStatus('photoStatus', 'pending', 'Waiting...');
+            updateStatus('messageStatus', 'pending', 'Waiting...');
+            updateProgress(0);
+
+            // Your existing process code here...
+            
+            const response = await fetch('https://api.github.com/repos/Anshul-Boinepally/anshubot/dispatches', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `token ${process.env.GITHUB_TOKEN}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                },
+                body: JSON.stringify({
+                    event_type: 'process_dataset',
+                    client_payload: {
+                        data: processedFiles
+                    }
+                })
+            });
+
+            if (response.ok) {
+                const jobId = await getLatestJobId(); // You'll need to implement this
+                checkProcessingStatus(jobId);
+            } else {
+                throw new Error('Failed to start processing');
+            }
+
+        } catch (error) {
+            updateStatus('refStatus', 'error', 'Failed');
+            updateStatus('photoStatus', 'error', 'Failed');
+            updateStatus('messageStatus', 'error', 'Failed');
+            console.error('Processing failed:', error);
+        }
+    }
+</script>
