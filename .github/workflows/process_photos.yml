@@ -1,0 +1,36 @@
+name: Process Photos
+
+on:
+  repository_dispatch:
+    types: [process_photos, process_audio]
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+          
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake python3-dev python3-pip build-essential
+          
+      - name: Install Python dependencies
+        run: |
+          pip install face_recognition firebase-admin openai pillow numpy
+
+      - name: Process Request
+        env:
+          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ "${{ github.event.action }}" = "process_photos" ]; then
+            python .github/scripts/face_processor.py
+          else
+            python .github/scripts/process_audio.py
+          fi
