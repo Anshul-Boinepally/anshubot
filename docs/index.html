@@ -1,149 +1,190 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Anshubot Dashboard</title>
+    <title>AI Assistant Dashboard</title>
     <style>
         /* ... existing styles ... */
-        .photo-upload-section {
+        .section {
             margin: 20px 0;
-        }
-        .relationship-mapping {
-            margin: 10px 0;
-            padding: 10px;
+            padding: 15px;
             border: 1px solid #eee;
+            border-radius: 5px;
         }
-        .preview-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 10px;
+        .reference-photo {
             margin: 10px 0;
         }
-        .preview-item {
-            position: relative;
-            padding: 5px;
+        .mapping-section {
+            margin: 15px 0;
         }
-        .preview-item img {
-            width: 100%;
-            height: 150px;
-            object-fit: cover;
-        }
-        .face-tag {
-            position: absolute;
-            background: rgba(255,255,255,0.8);
-            padding: 2px 5px;
-            border-radius: 3px;
+        .mapping-input {
+            display: flex;
+            gap: 10px;
+            margin: 5px 0;
         }
     </style>
 </head>
 <body>
-    <h1>Anshubot Dashboard</h1>
+    <h1>AI Assistant Dashboard</h1>
     
     <div class="control-panel">
-        <h2>Photo Management</h2>
-        
-        <!-- Relationship Definitions -->
-        <div class="relationship-mapping">
-            <h3>Define Relationships</h3>
-            <div>
-                <label>Anshul:</label>
-                <input type="text" id="anshul-relation" value="boyfriend" placeholder="e.g., boyfriend">
+        <!-- Reference Photos Section -->
+        <div class="section">
+            <h2>1. Identity Setup</h2>
+            <div class="reference-photo">
+                <h3>Anshul's Reference Photo</h3>
+                <input type="file" id="anshulRef" accept="image/*">
+                <p class="help">Upload a clear photo of Anshul's face</p>
             </div>
-            <div>
-                <label>Aarya:</label>
-                <input type="text" id="aarya-relation" value="me" placeholder="e.g., me">
+            <div class="reference-photo">
+                <h3>Aarya's Reference Photo</h3>
+                <input type="file" id="aaryaRef" accept="image/*">
+                <p class="help">Upload a clear photo of Aarya's face</p>
             </div>
         </div>
 
-        <!-- Photo Upload -->
-        <div class="photo-upload-section">
-            <h3>Upload Photos</h3>
-            <input type="file" id="photoUpload" accept="image/*" multiple>
-            <p class="help">Select multiple photos of you and Anshul</p>
+        <!-- Message Mapping Section -->
+        <div class="section">
+            <h2>2. Message Identity Mapping</h2>
+            <p>Map phone numbers/usernames to people:</p>
+            <div class="mapping-section">
+                <div class="mapping-input">
+                    <input type="text" id="anshulPhone" placeholder="Anshul's phone/username">
+                    <span>→ Anshul (boyfriend)</span>
+                </div>
+                <div class="mapping-input">
+                    <input type="text" id="aaryaPhone" placeholder="Aarya's phone/username">
+                    <span>→ Aarya (me)</span>
+                </div>
+            </div>
         </div>
 
-        <!-- Preview Section -->
-        <div id="previewContainer" class="preview-container"></div>
+        <!-- Photo Collection Section -->
+        <div class="section">
+            <h2>3. Photo Collection</h2>
+            <input type="file" id="photoCollection" accept="image/*" multiple>
+            <p class="help">Upload photos you want to be searchable</p>
+            <div id="photoPreview" class="preview-container"></div>
+        </div>
 
-        <button onclick="processPhotos()">Process Photos</button>
+        <!-- Message Collection Section -->
+        <div class="section">
+            <h2>4. Message History</h2>
+            <input type="file" id="messageUpload" accept=".txt,.json,.csv" multiple>
+            <p class="help">Upload message exports (WhatsApp, iMessage, SMS)</p>
+            <div id="messagePreview"></div>
+        </div>
+
+        <button onclick="processData()">Process Everything</button>
         <div id="uploadStatus" class="upload-status"></div>
     </div>
 
     <script>
-        let processedPhotos = [];
+        let processedFiles = {
+            references: {},
+            photos: [],
+            messages: [],
+            identityMap: {}
+        };
 
-        async function processPhotos() {
-            const files = document.getElementById('photoUpload').files;
-            const anshulRelation = document.getElementById('anshul-relation').value;
-            const aaryaRelation = document.getElementById('aarya-relation').value;
-            
+        async function processData() {
             try {
-                updateStatus('Processing photos...', 'info');
+                updateStatus('Processing data...', 'info');
                 
-                for(let file of files) {
-                    const photoData = await processPhoto(file);
-                    processedPhotos.push({
-                        file: file.name,
-                        faces: photoData.faces,
-                        relationships: {
-                            'Anshul': anshulRelation,
-                            'Aarya': aaryaRelation
-                        }
-                    });
+                // Get identity mappings
+                processedFiles.identityMap = {
+                    [document.getElementById('anshulPhone').value]: {
+                        name: 'Anshul',
+                        relationship: 'boyfriend'
+                    },
+                    [document.getElementById('aaryaPhone').value]: {
+                        name: 'Aarya',
+                        relationship: 'me'
+                    }
+                };
+
+                // Process reference photos
+                const anshulRef = document.getElementById('anshulRef').files[0];
+                const aaryaRef = document.getElementById('aaryaRef').files[0];
+                if (anshulRef) {
+                    processedFiles.references.anshul = await processFile(anshulRef);
+                }
+                if (aaryaRef) {
+                    processedFiles.references.aarya = await processFile(aaryaRef);
+                }
+
+                // Process photo collection
+                const photos = document.getElementById('photoCollection').files;
+                for (let photo of photos) {
+                    processedFiles.photos.push(await processFile(photo));
+                }
+
+                // Process messages
+                const messages = document.getElementById('messageUpload').files;
+                for (let msgFile of messages) {
+                    processedFiles.messages.push(await processFile(msgFile));
                 }
 
                 // Send to GitHub Actions
-                const response = await fetch('https://api.github.com/repos/YOUR_USERNAME/YOUR_REPO/dispatches', {
+                const response = await fetch('https://api.github.com/repos/Anshul-Boinepally/anshubot/dispatches', {
                     method: 'POST',
                     headers: {
                         'Authorization': `token ${process.env.GITHUB_TOKEN}`,
                         'Accept': 'application/vnd.github.v3+json'
                     },
                     body: JSON.stringify({
-                        event_type: 'process_photos',
+                        event_type: 'process_dataset',
                         client_payload: {
-                            photos: processedPhotos
+                            data: processedFiles
                         }
                     })
                 });
-                
-                updateStatus('Photos processed and uploaded successfully!', 'success');
+
+                updateStatus('Data processed successfully!', 'success');
             } catch (error) {
                 updateStatus('Processing failed: ' + error.message, 'error');
             }
         }
 
-        async function processPhoto(file) {
+        async function processFile(file) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onload = async (e) => {
-                    const img = new Image();
-                    img.src = e.target.result;
-                    img.onload = () => {
-                        // Preview the image
-                        showPreview(img.src, file.name);
-                        
-                        // In real implementation, we'd do face detection here
-                        resolve({
-                            width: img.width,
-                            height: img.height,
-                            faces: [] // Will be populated by Azure Face API
-                        });
-                    };
+                    resolve({
+                        name: file.name,
+                        content: e.target.result,
+                        type: file.type,
+                        lastModified: file.lastModified,
+                        metadata: {
+                            timestamp: new Date(file.lastModified).toISOString()
+                        }
+                    });
                 };
-                reader.readAsDataURL(file);
+                if (file.type.startsWith('image/')) {
+                    reader.readAsDataURL(file);
+                } else {
+                    reader.readAsText(file);
+                }
             });
         }
 
-        function showPreview(src, filename) {
-            const container = document.getElementById('previewContainer');
-            const div = document.createElement('div');
-            div.className = 'preview-item';
-            div.innerHTML = `
-                <img src="${src}" alt="${filename}">
-                <div class="face-tag">Processing...</div>
-            `;
-            container.appendChild(div);
-        }
+        // Add preview handlers
+        document.getElementById('photoCollection').addEventListener('change', function(e) {
+            const container = document.getElementById('photoPreview');
+            container.innerHTML = '';
+            for (let file of this.files) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const div = document.createElement('div');
+                    div.className = 'preview-item';
+                    div.innerHTML = `
+                        <img src="${e.target.result}" alt="${file.name}">
+                        <div class="metadata">Created: ${new Date(file.lastModified).toLocaleString()}</div>
+                    `;
+                    container.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
 
         function updateStatus(message, type) {
             const statusDiv = document.getElementById('uploadStatus');
