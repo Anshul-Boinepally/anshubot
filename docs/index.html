@@ -3,33 +3,45 @@
 <head>
     <title>AI Assistant Dashboard</title>
     <style>
-        /* Existing styles */
         body {
             font-family: Arial, sans-serif;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
         }
-        /* ... other existing styles ... */
-
-        /* Add new status panel styles */
-        .status-panel {
+        .control-panel, .status-panel {
             margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .section {
+            margin: 15px 0;
             padding: 15px;
             border: 1px solid #eee;
             border-radius: 5px;
         }
-        .status-items {
+        .upload-status {
+            margin-top: 10px;
+            padding: 10px;
+            display: none;
+        }
+        .success { background-color: #dff0d8; }
+        .error { background-color: #f2dede; }
+        .preview-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
             margin: 10px 0;
         }
+        /* Status panel specific styles */
+        .status-items { margin: 10px 0; }
         .status-item {
             margin: 5px 0;
             display: flex;
             justify-content: space-between;
         }
-        .status-value {
-            font-weight: bold;
-        }
+        .status-value { font-weight: bold; }
         .status-value.pending { color: #f0ad4e; }
         .status-value.processing { color: #5bc0de; }
         .status-value.complete { color: #5cb85c; }
@@ -61,59 +73,53 @@
 <body>
     <h1>AI Assistant Dashboard</h1>
     
-    <!-- Original control panel -->
+    <!-- Control Panel -->
     <div class="control-panel">
-        <!-- Identity Setup Section -->
+        <h2>Dataset Management</h2>
+        
+        <!-- Identity Setup -->
         <div class="section">
-            <h2>1. Identity Setup</h2>
-            <div class="reference-photo">
-                <h3>Anshul's Reference Photo</h3>
+            <h3>1. Identity Setup</h3>
+            <div>
+                <label>Anshul's Reference Photo:</label>
                 <input type="file" id="anshulRef" accept="image/*">
-                <p class="help">Upload a clear photo of Anshul's face</p>
             </div>
-            <div class="reference-photo">
-                <h3>Aarya's Reference Photo</h3>
+            <div>
+                <label>Aarya's Reference Photo:</label>
                 <input type="file" id="aaryaRef" accept="image/*">
-                <p class="help">Upload a clear photo of Aarya's face</p>
             </div>
         </div>
 
-        <!-- Message Mapping Section -->
+        <!-- Message Mapping -->
         <div class="section">
-            <h2>2. Message Identity Mapping</h2>
-            <p>Map usernames to people:</p>
-            <div class="mapping-section">
-                <div class="mapping-input">
-                    <input type="text" id="anshulUsernames" placeholder="Anshul's usernames (comma-separated)">
-                    <span>→ Anshul (boyfriend)</span>
-                </div>
-                <div class="mapping-input">
-                    <input type="text" id="aaryaUsernames" placeholder="Aarya's usernames (comma-separated)">
-                    <span>→ Aarya (me)</span>
-                </div>
+            <h3>2. Message Identity Mapping</h3>
+            <div>
+                <input type="text" id="anshulUsernames" placeholder="Anshul's usernames (comma-separated)">
+                <span>→ Anshul (boyfriend)</span>
+            </div>
+            <div>
+                <input type="text" id="aaryaUsernames" placeholder="Aarya's usernames (comma-separated)">
+                <span>→ Aarya (me)</span>
             </div>
         </div>
 
-        <!-- Photo Collection Section -->
+        <!-- Photo Collection -->
         <div class="section">
-            <h2>3. Photo Collection</h2>
+            <h3>3. Photo Collection</h3>
             <input type="file" id="photoCollection" accept="image/*" multiple>
-            <p class="help">Upload photos you want to be searchable</p>
             <div id="photoPreview" class="preview-container"></div>
         </div>
 
-        <!-- Message Collection Section -->
+        <!-- Message Collection -->
         <div class="section">
-            <h2>4. Message History</h2>
-            <div class="message-source">
-                <h3>iMessage Export</h3>
+            <h3>4. Message History</h3>
+            <div>
+                <h4>iMessage</h4>
                 <input type="file" id="imessageUpload" accept=".txt" multiple>
-                <p class="help">Export from Messages app: File → Export Chat Transcript</p>
             </div>
-            <div class="message-source">
-                <h3>Discord Export</h3>
+            <div>
+                <h4>Discord</h4>
                 <input type="file" id="discordUpload" accept=".json" multiple>
-                <p class="help">Use DiscordChatExporter or copy important message links</p>
             </div>
             <div id="messagePreview"></div>
         </div>
@@ -121,7 +127,7 @@
         <button onclick="processData()">Process Everything</button>
     </div>
 
-    <!-- Add status panel below control panel -->
+    <!-- Status Panel -->
     <div class="status-panel">
         <h2>Processing Status</h2>
         <div class="status-items">
@@ -138,15 +144,14 @@
                 <span id="messageStatus" class="status-value">Not started</span>
             </div>
         </div>
-        <div class="progress-bar" id="totalProgress">
+        <div class="progress-bar">
             <div class="progress-fill"></div>
             <span class="progress-text">0%</span>
         </div>
     </div>
 
-    <!-- Your existing script section -->
     <script>
-        // ... (previous JavaScript code) ...
+        // Your existing JavaScript here
     </script>
 </body>
 </html>
