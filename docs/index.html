@@ -1,173 +1,152 @@
-<!-- Add this right after the control-panel div -->
-<div class="status-panel">
-    <h2>Processing Status</h2>
-    <div class="status-items">
-        <div class="status-item">
-            <span class="status-label">Reference Photos:</span>
-            <span id="refStatus" class="status-value">Not started</span>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Assistant Dashboard</title>
+    <style>
+        /* Existing styles */
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        /* ... other existing styles ... */
+
+        /* Add new status panel styles */
+        .status-panel {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+        }
+        .status-items {
+            margin: 10px 0;
+        }
+        .status-item {
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .status-value {
+            font-weight: bold;
+        }
+        .status-value.pending { color: #f0ad4e; }
+        .status-value.processing { color: #5bc0de; }
+        .status-value.complete { color: #5cb85c; }
+        .status-value.error { color: #d9534f; }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #5cb85c;
+            width: 0;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            color: #333;
+            line-height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI Assistant Dashboard</h1>
+    
+    <!-- Original control panel -->
+    <div class="control-panel">
+        <!-- Identity Setup Section -->
+        <div class="section">
+            <h2>1. Identity Setup</h2>
+            <div class="reference-photo">
+                <h3>Anshul's Reference Photo</h3>
+                <input type="file" id="anshulRef" accept="image/*">
+                <p class="help">Upload a clear photo of Anshul's face</p>
+            </div>
+            <div class="reference-photo">
+                <h3>Aarya's Reference Photo</h3>
+                <input type="file" id="aaryaRef" accept="image/*">
+                <p class="help">Upload a clear photo of Aarya's face</p>
+            </div>
         </div>
-        <div class="status-item">
-            <span class="status-label">Photo Collection:</span>
-            <span id="photoStatus" class="status-value">Not started</span>
+
+        <!-- Message Mapping Section -->
+        <div class="section">
+            <h2>2. Message Identity Mapping</h2>
+            <p>Map usernames to people:</p>
+            <div class="mapping-section">
+                <div class="mapping-input">
+                    <input type="text" id="anshulUsernames" placeholder="Anshul's usernames (comma-separated)">
+                    <span>→ Anshul (boyfriend)</span>
+                </div>
+                <div class="mapping-input">
+                    <input type="text" id="aaryaUsernames" placeholder="Aarya's usernames (comma-separated)">
+                    <span>→ Aarya (me)</span>
+                </div>
+            </div>
         </div>
-        <div class="status-item">
-            <span class="status-label">Messages:</span>
-            <span id="messageStatus" class="status-value">Not started</span>
+
+        <!-- Photo Collection Section -->
+        <div class="section">
+            <h2>3. Photo Collection</h2>
+            <input type="file" id="photoCollection" accept="image/*" multiple>
+            <p class="help">Upload photos you want to be searchable</p>
+            <div id="photoPreview" class="preview-container"></div>
+        </div>
+
+        <!-- Message Collection Section -->
+        <div class="section">
+            <h2>4. Message History</h2>
+            <div class="message-source">
+                <h3>iMessage Export</h3>
+                <input type="file" id="imessageUpload" accept=".txt" multiple>
+                <p class="help">Export from Messages app: File → Export Chat Transcript</p>
+            </div>
+            <div class="message-source">
+                <h3>Discord Export</h3>
+                <input type="file" id="discordUpload" accept=".json" multiple>
+                <p class="help">Use DiscordChatExporter or copy important message links</p>
+            </div>
+            <div id="messagePreview"></div>
+        </div>
+
+        <button onclick="processData()">Process Everything</button>
+    </div>
+
+    <!-- Add status panel below control panel -->
+    <div class="status-panel">
+        <h2>Processing Status</h2>
+        <div class="status-items">
+            <div class="status-item">
+                <span class="status-label">Reference Photos:</span>
+                <span id="refStatus" class="status-value">Not started</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Photo Collection:</span>
+                <span id="photoStatus" class="status-value">Not started</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Messages:</span>
+                <span id="messageStatus" class="status-value">Not started</span>
+            </div>
+        </div>
+        <div class="progress-bar" id="totalProgress">
+            <div class="progress-fill"></div>
+            <span class="progress-text">0%</span>
         </div>
     </div>
-    <div class="progress-bar" id="totalProgress">
-        <div class="progress-fill"></div>
-        <span class="progress-text">0%</span>
-    </div>
-</div>
 
-<style>
-    .status-panel {
-        margin: 20px 0;
-        padding: 15px;
-        border: 1px solid #eee;
-        border-radius: 5px;
-    }
-    .status-items {
-        margin: 10px 0;
-    }
-    .status-item {
-        margin: 5px 0;
-        display: flex;
-        justify-content: space-between;
-    }
-    .status-value {
-        font-weight: bold;
-    }
-    .status-value.pending { color: #f0ad4e; }
-    .status-value.processing { color: #5bc0de; }
-    .status-value.complete { color: #5cb85c; }
-    .status-value.error { color: #d9534f; }
-    .progress-bar {
-        width: 100%;
-        height: 20px;
-        background-color: #f5f5f5;
-        border-radius: 4px;
-        overflow: hidden;
-        position: relative;
-        margin: 10px 0;
-    }
-    .progress-fill {
-        height: 100%;
-        background-color: #5cb85c;
-        width: 0;
-        transition: width 0.3s ease;
-    }
-    .progress-text {
-        position: absolute;
-        width: 100%;
-        text-align: center;
-        color: #333;
-        line-height: 20px;
-    }
-</style>
-
-<script>
-    // Add this to your existing JavaScript
-    async function checkProcessingStatus(jobId) {
-        const statusEndpoint = `https://api.github.com/repos/YOUR_USERNAME/YOUR_REPO/actions/runs/${jobId}`;
-        
-        const updateStatus = (elementId, status, message) => {
-            const element = document.getElementById(elementId);
-            element.textContent = message;
-            element.className = `status-value ${status}`;
-        };
-
-        const updateProgress = (percent) => {
-            const progressBar = document.querySelector('.progress-fill');
-            const progressText = document.querySelector('.progress-text');
-            progressBar.style.width = `${percent}%`;
-            progressText.textContent = `${percent}%`;
-        };
-
-        try {
-            const response = await fetch(statusEndpoint, {
-                headers: {
-                    'Authorization': `token ${process.env.GITHUB_TOKEN}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
-            
-            const data = await response.json();
-            
-            switch(data.status) {
-                case 'queued':
-                    updateStatus('refStatus', 'pending', 'Queued...');
-                    updateProgress(10);
-                    break;
-                case 'in_progress':
-                    updateStatus('refStatus', 'processing', 'Processing...');
-                    updateStatus('photoStatus', 'processing', 'Processing...');
-                    updateProgress(50);
-                    break;
-                case 'completed':
-                    if (data.conclusion === 'success') {
-                        updateStatus('refStatus', 'complete', 'Complete');
-                        updateStatus('photoStatus', 'complete', 'Complete');
-                        updateStatus('messageStatus', 'complete', 'Complete');
-                        updateProgress(100);
-                        return true;
-                    } else {
-                        updateStatus('refStatus', 'error', 'Failed');
-                        updateStatus('photoStatus', 'error', 'Failed');
-                        updateStatus('messageStatus', 'error', 'Failed');
-                        return true;
-                    }
-                    break;
-            }
-            
-            // Continue checking if not complete
-            setTimeout(() => checkProcessingStatus(jobId), 5000);
-            return false;
-            
-        } catch (error) {
-            console.error('Error checking status:', error);
-            updateStatus('refStatus', 'error', 'Error checking status');
-            return true;
-        }
-    }
-
-    // Modify your processData function
-    async function processData() {
-        try {
-            updateStatus('refStatus', 'pending', 'Starting...');
-            updateStatus('photoStatus', 'pending', 'Waiting...');
-            updateStatus('messageStatus', 'pending', 'Waiting...');
-            updateProgress(0);
-
-            // Your existing process code here...
-            
-            const response = await fetch('https://api.github.com/repos/Anshul-Boinepally/anshubot/dispatches', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `token ${process.env.GITHUB_TOKEN}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                },
-                body: JSON.stringify({
-                    event_type: 'process_dataset',
-                    client_payload: {
-                        data: processedFiles
-                    }
-                })
-            });
-
-            if (response.ok) {
-                const jobId = await getLatestJobId(); // You'll need to implement this
-                checkProcessingStatus(jobId);
-            } else {
-                throw new Error('Failed to start processing');
-            }
-
-        } catch (error) {
-            updateStatus('refStatus', 'error', 'Failed');
-            updateStatus('photoStatus', 'error', 'Failed');
-            updateStatus('messageStatus', 'error', 'Failed');
-            console.error('Processing failed:', error);
-        }
-    }
-</script>
+    <!-- Your existing script section -->
+    <script>
+        // ... (previous JavaScript code) ...
+    </script>
+</body>
+</html>
