@@ -13,7 +13,7 @@ class FaceProcessor:
         cred_dict = json.loads(os.environ['FIREBASE_CREDENTIALS'])
         cred = credentials.Certificate(cred_dict)
         firebase_admin.initialize_app(cred, {
-            'storageBucket': 'your-project-id.appspot.com'
+            'storageBucket': 'anshubot-b72c7'
         })
         
         # Initialize known faces
