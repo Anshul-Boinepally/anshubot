@@ -69,14 +69,36 @@
         </div>
     </div>
 
+    <!-- Add this section after Reference Photos -->
+<div class="section">
+    <h2>2. Relationship Mapping</h2>
+    <div>
+        <label>Anshul:</label>
+        <select id="anshulRelation">
+            <option value="boyfriend">Boyfriend</option>
+            <option value="friend">Friend</option>
+            <option value="other">Other</option>
+        </select>
+        <input type="text" id="anshulName" value="Anshul" placeholder="Name">
+    </div>
+    <div>
+        <label>Aarya:</label>
+        <select id="aaryaRelation">
+            <option value="me">Me</option>
+            <option value="other">Other</option>
+        </select>
+        <input type="text" id="aaryaName" value="Aarya" placeholder="Name">
+    </div>
+</div>
+
     <div class="section">
-        <h2>2. WhatsApp Chat</h2>
+        <h2>3. WhatsApp Chat</h2>
         <input type="file" id="whatsappUpload" accept=".txt">
         <p>Export your WhatsApp chat: Chat → More → Export chat → Without media</p>
     </div>
 
     <div class="section">
-        <h2>3. Photo Collection</h2>
+        <h2>4. Photo Collection</h2>
         <input type="file" id="photoCollection" accept="image/*" multiple>
         <div id="photoPreview" class="preview-container"></div>
     </div>
@@ -122,13 +144,27 @@
         });
 
         async function processData() {
-            try {
+    try {
+        const relationships = {
+            anshul: {
+                name: document.getElementById('anshulName').value,
+                relationship: document.getElementById('anshulRelation').value,
+                phone: document.getElementById('whatsappNumber').value // Add WhatsApp number field
+            },
+            aarya: {
+                name: document.getElementById('aaryaName').value,
+                relationship: document.getElementById('aaryaRelation').value,
+                phone: document.getElementById('whatsappNumber').value // Add WhatsApp number field
+            }
+        };
+        
                 updateStatus('refStatus', 'Processing...');
                 updateStatus('messageStatus', 'Waiting...');
                 updateStatus('photoStatus', 'Waiting...');
                 updateProgress(0);
 
                 const formData = new FormData();
+        formData.append('relationships', JSON.stringify(relationships));
                 
                 // Add reference photos
                 const anshulRef = document.getElementById('anshulRef').files[0];
@@ -167,6 +203,7 @@
                 updateStatus('refStatus', 'Failed');
                 updateStatus('messageStatus', 'Failed');
                 updateStatus('photoStatus', 'Failed');
+        updateStatus('refStatus', 'Failed');
             }
         }
 
