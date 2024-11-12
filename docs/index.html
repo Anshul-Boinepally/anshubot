@@ -145,75 +145,160 @@
 
         async function processData() {
     try {
+        // Update initial status
+        updateStatus('refStatus', 'Processing...');
+        updateStatus('messageStatus', 'Waiting...');
+        updateStatus('photoStatus', 'Waiting...');
+        updateProgress(0);
+
+        // Get relationship mappings
         const relationships = {
             anshul: {
                 name: document.getElementById('anshulName').value,
                 relationship: document.getElementById('anshulRelation').value,
-                phone: document.getElementById('whatsappNumber').value // Add WhatsApp number field
+                whatsapp: document.getElementById('whatsappNumber').value
             },
             aarya: {
                 name: document.getElementById('aaryaName').value,
                 relationship: document.getElementById('aaryaRelation').value,
-                phone: document.getElementById('whatsappNumber').value // Add WhatsApp number field
+                whatsapp: document.getElementById('whatsappNumber').value
             }
         };
+
+        // Process reference photos
+        const referencePhotos = {};
+        const anshulRef = document.getElementById('anshulRef').files[0];
+        const aaryaRef = document.getElementById('aaryaRef').files[0];
         
-                updateStatus('refStatus', 'Processing...');
-                updateStatus('messageStatus', 'Waiting...');
-                updateStatus('photoStatus', 'Waiting...');
-                updateProgress(0);
+        if (anshulRef) {
+            referencePhotos.anshul = await processFile(anshulRef);
+        }
+        if (aaryaRef) {
+            referencePhotos.aarya = await processFile(aaryaRef);
+        }
+        updateProgress(20);
 
-                const formData = new FormData();
-        formData.append('relationships', JSON.stringify(relationships));
-                
-                // Add reference photos
-                const anshulRef = document.getElementById('anshulRef').files[0];
-                const aaryaRef = document.getElementById('aaryaRef').files[0];
-                if(anshulRef) formData.append('anshulRef', anshulRef);
-                if(aaryaRef) formData.append('aaryaRef', aaryaRef);
-                
-                // Add WhatsApp chat
-                const whatsappFile = document.getElementById('whatsappUpload').files[0];
-                if(whatsappFile) formData.append('whatsapp', whatsappFile);
-                
-                // Add photo collection
-                const photos = document.getElementById('photoCollection').files;
-                for(let photo of photos) {
-                    formData.append('photos[]', photo);
-                }
+        // Process WhatsApp chat
+        const whatsappFile = document.getElementById('whatsappUpload').files[0];
+        let whatsappData = null;
+        if (whatsappFile) {
+            whatsappData = await processFile(whatsappFile);
+        }
+        updateProgress(40);
 
-                // Start processing
-                const response = await fetch('/process', {
-                    method: 'POST',
-                    body: formData
-                });
+        // Process photo collection
+        const photoCollection = document.getElementById('photoCollection').files;
+        const processedPhotos = [];
+        
+        for (let i = 0; i < photoCollection.length; i++) {
+            const photo = photoCollection[i];
+            const processedPhoto = await processFile(photo);
+            processedPhotos.push(processedPhoto);
+            
+            // Update progress based on photo processing
+            const photoProgress = 40 + (40 * (i + 1) / photoCollection.length);
+            updateProgress(photoProgress);
+        }
 
-                if(response.ok) {
-                    const result = await response.json();
-                    updateProgress(100);
-                    updateStatus('refStatus', 'Complete');
-                    updateStatus('messageStatus', 'Complete');
-                    updateStatus('photoStatus', 'Complete');
-                } else {
-                    throw new Error('Processing failed');
-                }
+        // Estimate costs based on GPT-4o mini pricing
+        const estimatedCost = calculateCost(processedPhotos.length);
+        console.log(`Estimated processing cost: $${estimatedCost.toFixed(4)}`);
 
-            } catch(error) {
-                console.error('Error:', error);
-                updateStatus('refStatus', 'Failed');
-                updateStatus('messageStatus', 'Failed');
-                updateStatus('photoStatus', 'Failed');
-        updateStatus('refStatus', 'Failed');
+        // Prepare final payload
+        const payload = {
+            event_type: 'process_dataset',
+            client_payload: {
+                relationships: relationships,
+                referencePhotos: referencePhotos,
+                whatsappData: whatsappData,
+                photoCollection: processedPhotos
             }
+        };
+
+        // Send to GitHub Actions
+        const response = await fetch('https://api.github.com/repos/YOUR_USERNAME/YOUR_REPO/dispatches', {
+            method: 'POST',
+            headers: {
+                'Authorization': `token ${process.env.GITHUB_TOKEN}`,
+                'Accept': 'application/vnd.github.v3+json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            updateProgress(100);
+            updateStatus('refStatus', 'Complete');
+            updateStatus('messageStatus', 'Complete');
+            updateStatus('photoStatus', 'Complete');
+        } else {
+            throw new Error('Failed to start processing');
         }
 
-        function updateStatus(elementId, status) {
-            document.getElementById(elementId).textContent = status;
-        }
+    } catch (error) {
+        console.error('Processing failed:', error);
+        updateStatus('refStatus', 'Failed');
+        updateStatus('messageStatus', 'Failed');
+        updateStatus('photoStatus', 'Failed');
+    }
+}
 
-        function updateProgress(percent) {
-            document.querySelector('.progress-fill').style.width = percent + '%';
+async function processFile(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            // Get timestamp (prefer EXIF data for images)
+            let timestamp = file.lastModified ? new Date(file.lastModified) : new Date();
+            
+            if (file.type.startsWith('image/')) {
+                const img = new Image();
+                img.onload = function() {
+                    try {
+                        EXIF.getData(this, function() {
+                            const exifDate = EXIF.getTag(this, "DateTimeOriginal");
+                            if (exifDate) {
+                                timestamp = new Date(exifDate);
+                            }
+                        });
+                    } catch (e) {
+                        console.log("No EXIF data available");
+                    }
+                };
+                img.src = e.target.result;
+            }
+
+            resolve({
+                name: file.name,
+                content: e.target.result,
+                type: file.type,
+                metadata: {
+                    timestamp: timestamp.toISOString(),
+                    originalName: file.name,
+                    size: file.size
+                }
+            });
+        };
+        
+        if (file.type.startsWith('image/')) {
+            reader.readAsDataURL(file);
+        } else {
+            reader.readAsText(file);
         }
+    });
+}
+
+function calculateCost(numPhotos) {
+    // Based on GPT-4o mini pricing
+    const COST_PER_MILLION_INPUT = 0.150;  // $0.150 per 1M input tokens
+    const BASE_TOKENS = 2833;  // Base tokens per image
+    const TILE_TOKENS = 5667;  // Tokens per 512x512 tile
+    
+    // Calculate total tokens for all photos
+    const tokensPerPhoto = BASE_TOKENS + TILE_TOKENS;  // Assuming 1 tile per photo
+    const totalTokens = tokensPerPhoto * numPhotos;
+    
+    // Calculate cost
+    return (totalTokens * COST_PER_MILLION_INPUT) / 1000000;
+}
     </script>
 </body>
 </html>
